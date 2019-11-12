@@ -3,6 +3,9 @@
 Collects the sensor configuration file to be parsed and reads it into a list
 """
 import sys
+import os
+
+
 
 def get_command_line_config_file():
     """Collects configuration file to be use by command line argument, prompting
@@ -27,6 +30,7 @@ def open_file(file):
         file:
     """
     o_file = False
+    file = "config/" + file
     try:
         o_file = open(file, 'r')
 
@@ -88,10 +92,22 @@ def close_config_file(file):
         print("Can't close file?")
         return False
 
+def list_config_dir():
+    """List the contents of the config directory
+    """
+    config_path = "config/"
+    config_files = os.listdir(config_path)
+    for file in config_files:
+        print(file)
+    return config_files
+
 
 def main():
     print("This script should be run from the start file.")
     print("As a test it can be ran alone and will return the contents of any file provided.")
+
+    list_config_dir()
+
     opened_config_file = get_config_file()
     # File contents to list so we can close the file now
     file_list = file_to_list(opened_config_file)
