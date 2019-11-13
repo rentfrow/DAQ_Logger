@@ -8,6 +8,8 @@ Requirements:
 - Cannot use VXI-11 protocol as those port addresses have been blocked in the internal network. Internal telnet port addresses (5024) have
   not been block so those addresses will be used. 
 - Must work on Linux and Windows console terminals. Going for lean and easy to use. 
+- Must have separate configuration files for each test
+- The configuration files could be editable in the program
 
 Usage: <TBD>
 
