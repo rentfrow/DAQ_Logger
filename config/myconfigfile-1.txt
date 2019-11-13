@@ -1,0 +1,31 @@
+# Ignore commented lines and blank lines
+# channel number, description, Sensor Type, temp type, thermocouple type, Range, Degrees Type, Resolution
+
+# IP address of the data acquisition unit
+Address: 10.193.70.133
+
+Another messed up line
+
+
+1001, This is a long sensor name up to 40 char, Temp, TC, T, 1, C, DEF
+1002, #two+plus+signs, Temp, TC, T, 1, C, DEF
+1003, three_3, Temp, TC, T, 1, C, DEF
+1004, four-#dash, Temp, TC, T, 1, C, DEF
+1005, my volts, VOLT, DC, AUTO, DEF
+1006, six, Temp, TC, K, 1, F, DEF
+1007, sev, Temp, TC, T, 1, C, DEF
+1008, eig, Temp, TC, T, 1, C, DEF
+# 1009, fiv, Temp, TC, T, 1, C, DEF
+
+# Voltage DC
+# CONFigure[:VOLTage][:DC] [{<range>|AUTO|MIN|MAX|DEF} [,{<resolution>|MIN|MAX|DEF}] , ] [(@<ch_list>)]
+1009, my volts, VOLT, DC, AUTO, DEF
+
+# Current DC
+# CONFigure:CURRent[:DC] [{<range>|AUTO|MIN|MAX|DEF} [,{<resolution>|MIN|MAX|DEF}] , ] [(@<ch_list>)]
+1010, my current, CURR, DC, AUTO, DEF
+
+# Frequency
+# CONFigure:FREQuency [{<range>|MIN|MAX|DEF} [,{<resolution>|MIN|MAX|DEF}] , ] [(@<ch_list>)]
+1011, my freq + more , FREQ, DEF, DEF
+

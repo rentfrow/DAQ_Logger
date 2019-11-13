@@ -16,9 +16,15 @@ import telnetlib
 import re
 import time
 
+# Agilent Technologies 34980A
 daq_ip_address = "10.193.64.232"
+
+# Agilent Technologies 34972A
+#daq_ip_address = "10.193.70.133"
+
 daq_port_address = "5024"
 
+# TODO: channel number for 34972A only works with 3 digits while the 34980A only works with 4 digits
 chan_list = [[1001, "This is a long sensor name up to 40 char", "Temp", "TC", "T", 1, "C", "DEF"],
              [1002, "#two+plus+signs", "Temp", "TC", "T", 1, "C", "DEF"],
              [1003, "three_3", "Temp", "TC", "T", 1, "C", "DEF"],
@@ -96,7 +102,9 @@ def configure_thermocouple_chan(daq_conn, chan_num):
         need to experiment with it, default is 1 - range {0.02|0.2|1|2|10|20|100|200} MIN = 0.02 PLC, MAX = 200 PLC
     """
     chan_num = "@" + str(chan_num)
-    st = 0.1
+
+    # print("Configuring %s"%(chan_num))
+    st = 0.5
 
     cmd = ":CONFigure:TEMPerature TCouple,T,(" + chan_num + ")"
     daq_conn.write(cmd.encode())
@@ -113,18 +121,13 @@ def configure_thermocouple_chan(daq_conn, chan_num):
     time.sleep(st)
     daq_conn.write(b"\n\n")
 
-    cmd = ":SENSe:TEMPerature:NPLCycles 10," + chan_num + ")"
-    daq_conn.write(cmd.encode())
-    time.sleep(st)
-    daq_conn.write(b"\n\n")
-
-    cmd = ":ROUTe:SCAN:ADD (" + chan_num + ")"
+    cmd = ":SENSe:TEMPerature:NPLCycles 10,(" + chan_num + ")"
     daq_conn.write(cmd.encode())
     time.sleep(st)
     daq_conn.write(b"\n\n")
 
 
-def configure_daq(daq_conn):
+def configure_daq(daq_conn, chan_list):
     """Set up DAQ for logging
     """
     st = 0.1
@@ -148,15 +151,31 @@ def configure_daq(daq_conn):
     daq_conn.write(b"FORMat:READing:TIME:TYPE ABS\n")
     time.sleep(st)
 
+    print(chan_list)
+    cmd = ":ROUTe:SCAN (" + chan_list + ")"
+    #cmd = ":ROUTe:SCAN (@1001,1002,1003)"
+    daq_conn.write(cmd.encode())
+    time.sleep(st)
+    daq_conn.write(b"\n\n")
 
 
 
+
+def e_notation_to_dec(e_nota):
+    """Agilent format of Engineering Notation (m * 10^n) to a decimal number
+    +1.90380000E+01
+    -1.00346000E+02
+    """
+    m = float(e_nota[0:11])
+    e = float(e_nota[12:15])
+    return round(m*10**e, 3)
 
 
 def main():
     tel_conn = connect_daq(daq_ip_address, daq_port_address, 10)
     if not tel_conn:
-        print("Can't reach IP address: %s %s"%(daq_port_address, daq_port_address))
+        print("Can't reach IP address: %s %s"%(daq_ip_address, daq_port_address))
+        exit()
 
     welcome = welcome_daq(tel_conn)
     if welcome:
@@ -171,35 +190,49 @@ def main():
     print("DAQ Serial Number: %s"% daq_identity[2])
     print("DAQ Firmware:      %s"% daq_identity[3])
 
-    reset_daq_factory_cfg(tel_conn, daq_prompt)
+    if reset_daq_factory_cfg(tel_conn, daq_prompt):
+        print("Reset DAQ")
+    else:
+        print("Problem resetting DAQ")
 
+
+    chan_numbers = "@"
     for i in range(len(chan_list)):
-        print(i)
+        print("Configuring channel %d"% (chan_list[i][0]))
         configure_thermocouple_chan(tel_conn, chan_list[i][0])
+        chan_numbers = chan_numbers + str(chan_list[i][0])
+        if not i >= len(chan_list)-1:
+            chan_numbers = chan_numbers + ","
 
-    configure_daq(tel_conn)
+    configure_daq(tel_conn, chan_numbers)
+
 
     sensor_re = r"[+-]\d\.\d{8}E[+-]\d{2}"
     sen_line = re.compile(sensor_re)
 
     for i in range(1,5):
         tel_conn.write(b":READ?\n")
-        response = tel_conn.read_until(b"\n", 1)
-
+        response = tel_conn.read_until(b"\n", 5)
+        # Time between log events
         time.sleep(5)
+
+        # Put the read_until into a list
         response = response.strip()
         response = response.decode('ascii')
-        response = response.strip(daq_prompt)
         response = response.split(",")
-        #print(response)
+        response[0] = response[0].strip(daq_prompt)
 
+        # prints the entire matched list
+        print("Matched line: %s"%(response))
+
+        # Finds the temperature sensor in the matched list, I think this will work for any sensor
         for i in range(len(response)):
             # Find an sensor value
-            sen_line_match = sen_line.match(cfg_l)
-
-            print(response[i])
-
-
+            sen_line_match = sen_line.match(response[i])
+            if sen_line_match:
+                # print(sen_line_match)
+                # print(response[i])
+                print(e_notation_to_dec(response[i]))
 
     tel_conn.write(b"\x04")
     # tn.close()
@@ -208,4 +241,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

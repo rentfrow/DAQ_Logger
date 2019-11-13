@@ -9,6 +9,16 @@ import time
 import curses
 
 
+def list_config_dir():
+    """List the contents of the config directory
+    """
+    config_path = "./config/"
+    config_files = os.listdir(config_path)
+    for file in config_files:
+        print(file)
+    return config_files
+
+
 def main(stdscr):
     # disable cursor blinking
     curses.curs_set(0)
