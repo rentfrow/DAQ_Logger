@@ -29,6 +29,7 @@ scratch notes DELETE LATER
 
 import sys
 import re
+import handle_config_file as hcf
 
 class Sensor:
     """A general DAQ sensor"""
@@ -59,6 +60,20 @@ class Sensor:
                self.sen_attr01, self.sen_attr02, self.sen_attr03,
                self.sen_attr04, self.sen_attr05)
               )
+
+
+def list_errors(error_list):
+    """
+    :param error_list:
+    :return:
+    """
+    print("\n#################################")
+    print("# Errors found in config file! #")
+    print("#################################")
+    for items in range(0, len(error_list)):
+        line = error_list[items][0]
+        error = error_list[items][1]
+        print("Configuration line: %s - \"%s\""%(line, error))
 
 
 def add_sensor_line(cfg_line, sensor_list):
@@ -163,25 +178,8 @@ def search_for_sensor(cfg_line):
     return search_results
 
 
-def get_config_file():
-    """Collects configuration file to be use by command line argument, prompting
-    the user or by using the default test file. Returns config file to be
-    opened.
-    """
-    try:
-        configfile = sys.argv[1]
-    except IndexError:
-        print("You need to enter a config file name")
-        # exit()
-        print("Will use test config file instead: myconfigfile.txt")
-        configfile = "myconfigfile.txt"
-        #configfile = "my_good_config_file.txt"
-    return configfile
-
-
 def open_file(file):
     """Opens a config file to be read in. Returns a file handle or False
-
     Args:
         file:
     """
@@ -195,10 +193,9 @@ def open_file(file):
 
 
 def main():
+    config_path = "config/"
     # Prompt for config file:
-    configfile = get_config_file()
-    # Check if it can be opened and open it if you can
-    opened_config_file = open_file(configfile)
+    opened_config_file = hcf.get_config_file(config_path)
 
 
     sensor_list, error_list = parse_config_file(opened_config_file)

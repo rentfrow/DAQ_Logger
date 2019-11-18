@@ -5,7 +5,7 @@ Collects the sensor configuration file to be parsed and reads it into a list
 import sys
 import os
 
-
+config_path = "./config/"
 
 def get_command_line_config_file():
     """Collects configuration file to be use by command line argument, prompting
@@ -16,9 +16,6 @@ def get_command_line_config_file():
         configfile = sys.argv[1]
     except IndexError:
         print("You need to enter a config file name")
-        #print("Will use test config file instead: myconfigfile.txt")
-        #configfile = "myconfigfile.txt"
-        #configfile = "my_good_config_file.txt"
         return False
     return configfile
 
@@ -36,6 +33,8 @@ def open_file(file):
 
     except FileNotFoundError:
         print("Sorry I could not find the config file: \"%s\"" % file)
+    except OSError:
+        print("Did not understand '%s'. Try again."% (file))
     return o_file
 
 
@@ -63,7 +62,7 @@ def prompt_for_config_file():
     return input("Enter the configuration file: ")
 
 
-def get_config_file():
+def get_config_file(config_path):
     """Collects the configuration file from a user prompt or from the command line.
     Then returns an opened file handle.
     """
@@ -71,6 +70,18 @@ def get_config_file():
     file = get_command_line_config_file()  # Fetch from the command line if possible
     # Loop over until we open a configuration file
     while not file:
+        file_list_msg = "| Available configuration files in " + config_path + " |"
+        msg_divider = ""
+        for i in range(0, len(file_list_msg)):
+            msg_divider = msg_divider + "-"
+        print(msg_divider)
+        print(file_list_msg)
+        print(msg_divider)
+        config_file_list = list_config_dir(config_path)
+        for a_config_file in config_file_list:
+            print("    - %s"%(a_config_file))
+        print(msg_divider)
+
         file = prompt_for_config_file()
         # Check if it can be opened and open it if you can
         opened_config_file = open_file(file)
@@ -92,13 +103,12 @@ def close_config_file(file):
         print("Can't close file?")
         return False
 
-def list_config_dir():
+def list_config_dir(config_path):
     """List the contents of the config directory
     """
-    config_path = "./config/"
     config_files = os.listdir(config_path)
-    for file in config_files:
-        print(file)
+    #for file in config_files:
+    #    print(file)
     return config_files
 
 
@@ -106,9 +116,7 @@ def main():
     print("This script should be run from the start file.")
     print("As a test it can be ran alone and will return the contents of any file provided.")
 
-    list_config_dir()
-
-    opened_config_file = get_config_file()
+    opened_config_file = get_config_file(config_path)
     # File contents to list so we can close the file now
     file_list = file_to_list(opened_config_file)
 
