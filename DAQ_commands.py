@@ -20,23 +20,30 @@ import time
 #daq_ip_address = "10.193.64.232"
 
 # Agilent Technologies 34972A
-daq_ip_address = "10.193.70.133"
+# TODO: Need to pass the IP address from the configuration file
+# daq_ip_address = "10.193.70.133"
+daq_ip_address = "172.28.94.64"
 
 daq_port_address = "5024"
 
 # TODO: channel number for 34972A only works with 3 digits while the 34980A only works with 4 digits
-chan_list = [[101, "This is a long sensor name up to 40 char", "Temp", "TC", "T", 1, "C", "DEF"],
-             [102, "#two+plus+signs", "Temp", "TC", "T", 1, "C", "DEF"],
-             [103, "three_3", "Temp", "TC", "T", 1, "C", "DEF"],
-             [104, "no thermocouple on channel", "Temp", "TC", "T", 1, "C", "DEF"],
-             [105, "my volts", "VOLT", "DC", "AUTO", "DEF"]
+# Channel Config
+# Number, Name, Function, Range, Resolution, MORE?, Scale, Gain(M), Offset(B), Units
+# Functions Supported: Temp(T,J,etc), Volt_DC, Frequency, Current_DC
+#             Num, Name,            Function,    Range, Resolution, Scale,   Gain(M),   Offset(B),   Units
+chan_list = [[101, "Front Ambient", "TCouple-T", "1",   "C",       "FALSE",  "1",       "0",         "C"],
+             [102, "Fan Voltage",   "Volt_DC",   "DEF", "DEF",     "FALSE",  "1",       "0",         "Vdc"],
+             [103, "Shunt Current", "Volt_DC",   "DEF", "DEF",     "TRUE",   "500",     "0",         "Amp"],
+             [104, "Fan RPM 1",     "Frequency", "10",  "4.5",     "TRUE",   "1000",    "0",         "RPM"],
+             [104, "Fan RPM 2",     "Frequency", "10",  "4.5",     "TRUE",   "1000",    "0",         "RPM"],
+             [106, "REAR Amb",      "TCouple-T", "1",   "C",       "FALSE",  "1",       "0",         "C"]
             ]
 
 def connect_daq(ip, port, timeout_num):
     """Connect to DAQ and return the connection and telnet terminal prompt
     """
     try:
-        telnet_conn = telnetlib.Telnet(daq_ip_address, daq_port_address, timeout=timeout_num)
+        telnet_conn = telnetlib.Telnet(ip, port, timeout=timeout_num)
         telnet_conn.write(b"\n")
     except:
         print("Telnet to %s %s timed out."% (daq_ip_address, daq_port_address))
@@ -70,6 +77,22 @@ def reset_daq_factory_cfg(daq_conn, daq_prompt):
     if result:
         return True
     else:
+        print("Issue resetting the DAQ")
+        return False
+
+
+def put_in_local_mode(daq_conn, daq_prompt):
+    """Put DAQ into remote mode
+    """
+    #daq_prompt = b"34980A> "
+    prompt = daq_prompt.encode()
+    daq_conn.write(b"SYSTem:LOCal\n")
+    time.sleep(1)
+    result = daq_conn.read_until(prompt, 5)
+    if result:
+        return True
+    else:
+        print("Issue putting DAQ into local mode")
         return False
 
 
@@ -97,6 +120,68 @@ def get_idn(daq_conn):
     return (manufacturer, daq_model, daq_serial_number, daq_firmware_version)
 
 
+def configure_dc_voltage(daq_conn, chan_num):
+    """Configure a DC Voltage channel
+    CONFigure[:VOLTage][:DC] [{<range>|AUTO|MIN|MAX|DEF} [,{<resolution>|MIN|MAX|DEF}] , ] [(@<ch_list>)]
+    Auto Range -> [SENSe:]VOLTage:AC:RANGe:AUTO <state>[,(@<ch_list>)]
+                    VOLT:AC:RANG:AUTO ON,(@103,113)
+    Range -> [SENSe:]VOLTage:AC:RANGe {<range>|MIN|MAX}[,(@<ch_list>)]
+                    VOLT:DC:RANG 10,(@103,113)
+    """
+    sleep_time = 0.1
+    chan_num = "@" + str(chan_num)
+    execute_daq_cmd(daq_conn, ":CONFigure:VOLTage :DC DEF ,DEF,(" + chan_num + ")", sleep_time)
+    execute_daq_cmd(daq_conn, ":SENSe:VOLTage:DC:NPLCycles 10,(" + chan_num + ")", sleep_time)
+    return True
+
+
+def configure_dc_current(daq_conn, chan_num):
+    """Configure a DC Current channel
+    This only works on 34901A 20 Channel Multiplexer (2/4-wire) Module (channels 21 and 22 only) at 250V 1A
+    CONFigure:CURRent:DC [{<range>|AUTO|MIN|MAX|DEF}[,{<resolution>|MIN|MAX|DEF}],] (@<scan_list>)
+    [SENSe:]CURRent:DC:NPLC {<PLCs>|MIN|MAX}[,(@<ch_list>)]
+    """
+    sleep_time = 0.1
+    chan_num = "@" + str(chan_num)
+    execute_daq_cmd(daq_conn, ":CONFigure:CURRent :DC DEF ,DEF,(" + chan_num + ")", sleep_time)
+    execute_daq_cmd(daq_conn, ":SENSe:CURRent:DC:NPLCycles 10,(" + chan_num + ")", sleep_time)
+    return True
+
+
+def configure_shunt(daq_conn, chan_num):
+    """Configure a shunt to measure an ampere >1A
+    also can be used for lower amperes <1A but the 34901A on channel 21 & 22 will measure amps below 1A
+    CALCulate:SCALe:GAIN <gain>[,(@<ch_list>)]
+    CALCulate:SCALe:GAIN? [(@<ch_list>)]
+    CALCulate:SCALe:OFFSet <offset>[,(@<ch_list>)]
+    CALCulate:SCALe:OFFSet? [(@<ch_list>)]
+    CALCulate:SCALe:STATe <state>[,(@<ch_list>)]
+    Shunt - Lab 25-50, 25A, 50MV, 0.002 Ohms
+    """
+
+    # This is specifically for the EM-PRO Lab 25-50 (25Amp, MV 50, .002 OHMs)
+    gain = "500" # This is equal to (1.0 / 0.002)
+    sleep_time = 0.1
+    chan_num = "@" + str(chan_num)
+    execute_daq_cmd(daq_conn, ":CONFigure:VOLTage :DC MAX,1,(" + chan_num + ")", sleep_time)
+    execute_daq_cmd(daq_conn, "CALCulate:SCALe:STATe ON,(" + chan_num + ")", sleep_time)
+    execute_daq_cmd(daq_conn, ":SENSe:VOLTage:DC:NPLCycles 10,(" + chan_num + ")", sleep_time)
+    execute_daq_cmd(daq_conn, "CALCulate:SCALe:GAIN " + gain + ",(" + chan_num + ")", sleep_time)
+
+
+def configure_frequency(daq_conn, chan_num):
+    """Configure frequency such as RPM
+    """
+    gain = "1000"
+    volt_range = "10"
+    resolution = "4.5"  # 4.5, 5.5, 6.5
+    sleep_time = 0.1
+    chan_num = "@" + str(chan_num)
+    execute_daq_cmd(daq_conn, "CONFigure:FREQuency ," + volt_range + "," + resolution + ",(" + chan_num + ")", sleep_time)
+    execute_daq_cmd(daq_conn, "CALCulate:SCALe:GAIN " + gain + ",(" + chan_num + ")", sleep_time)
+    execute_daq_cmd(daq_conn, "CALCulate:SCALe:STATe ON,(" + chan_num + ")", sleep_time)
+
+
 def configure_thermocouple_chan(daq_conn, chan_num):
     """Configure a thermocouple channel
     Stuff to worry about:
@@ -106,36 +191,28 @@ def configure_thermocouple_chan(daq_conn, chan_num):
         need to experiment with it, default is 1 - range {0.02|0.2|1|2|10|20|100|200} MIN = 0.02 PLC, MAX = 200 PLC
     """
     chan_num = "@" + str(chan_num)
+    sleep_time = 0.1
+    execute_daq_cmd(daq_conn, ":CONFigure:TEMPerature TCouple,T,(" + chan_num + ")", sleep_time)
+    execute_daq_cmd(daq_conn, ":UNIT:TEMPerature C,(" + chan_num + ")", sleep_time)
+    execute_daq_cmd(daq_conn,
+                    ":SENSe:TEMPerature:TRANsducer:TCouple:RJUNction:TYPE INTernal,(" + chan_num + ")", sleep_time)
+    execute_daq_cmd(daq_conn, ":SENSe:TEMPerature:NPLCycles 10,(" + chan_num + ")", sleep_time)
+    return True
 
-    # print("Configuring %s"%(chan_num))
-    st = 0.5
 
-    cmd = ":CONFigure:TEMPerature TCouple,T,(" + chan_num + ")"
-    daq_conn.write(cmd.encode())
-    time.sleep(st)
+def execute_daq_cmd(daq_conn, daq_cmd, interval_between_cmds):
+    """Execute the DAQ command on the DAQ
+    """
+    daq_conn.write(daq_cmd.encode())
+    time.sleep(interval_between_cmds)
     daq_conn.write(b"\n\n")
-
-    cmd = ":UNIT:TEMPerature C,(" + chan_num + ")"
-    daq_conn.write(cmd.encode())
-    time.sleep(st)
-    daq_conn.write(b"\n\n")
-
-    cmd = ":SENSe:TEMPerature:TRANsducer:TCouple:RJUNction:TYPE INTernal,(" + chan_num + ")"
-    daq_conn.write(cmd.encode())
-    time.sleep(st)
-    daq_conn.write(b"\n\n")
-
-    cmd = ":SENSe:TEMPerature:NPLCycles 10,(" + chan_num + ")"
-    daq_conn.write(cmd.encode())
-    time.sleep(st)
-    daq_conn.write(b"\n\n")
+    return True
 
 
 def configure_daq(daq_conn, chan_list):
-    """Set up DAQ for logging
+    """Set up DAQ for logging not individual channels
     """
     st = 0.1
-
     # Setup Trigger: The instrument will accept an immediate (continuous) trigger
     daq_conn.write(b":TRIGger:SOURce IMMediate\n")
     time.sleep(st)
@@ -168,7 +245,8 @@ def e_notation_to_dec(e_nota):
     """
     m = float(e_nota[0:11])
     e = float(e_nota[12:15])
-    return round(m*10**e, 4)
+    return round(m*10**e, 6)
+    #return e_nota
 
 
 def collect_sensor_line(tel_conn, daq_prompt):
@@ -189,12 +267,12 @@ def collect_sensor_line(tel_conn, daq_prompt):
     return response
 
 
-def return_sensor_value(raw_sensor_line):
-    """Finds the temperature sensor in the matched list, I think this will work for any sensor
-     ['+1.89150000E+01', '2019', '11', '15', '10', '32', '15.133', '101']
+def return_sensor_value(raw_sensor_line, chan_config_list):
+    """Finds the sensor channel number, datestamp and value in the matched list and returns it as a list
     """
     sensor_re = r"[+-]\d\.\d{8}E[+-]\d{2}"
     sen_line = re.compile(sensor_re)
+    sensor_line = []
     for i in range(len(raw_sensor_line)):
         # Find an sensor value
         sen_line_match = sen_line.match(raw_sensor_line[i])
@@ -210,7 +288,85 @@ def return_sensor_value(raw_sensor_line):
             seconds = seconds[0]
             datestamp = month + "/" + day + "/" + year + " " + hour + ":" + minutes + ":" + seconds
             channel = raw_sensor_line[i+7]
-            print("%s, %s, %f"% (channel, datestamp, sensor_value))
+            chan_description = find_channel_description(channel, chan_config_list)
+            # print("%s, %s, %s, %f"% (channel, chan_description, datestamp, sensor_value))
+            sensor_line.append(datestamp)
+            sensor_line.append(channel)
+            sensor_line.append(chan_description)
+            sensor_line.append(sensor_value)
+    return sensor_line
+
+
+def find_channel_description(channel, chan_config_list):
+    """Find the channel description from the channel config file
+    """
+    for i in range(0,len(chan_config_list)):
+        if str(channel) == str(chan_config_list[i][0]):
+            return chan_config_list[i][1]
+    return False
+
+
+def welcome_get_idn(daq_conn):
+    """Check if we got the welcome connection and return the idn
+    Need to run these two commands in sequence welcome -> idn
+    """
+    welcome = welcome_daq(daq_conn)
+    if welcome:
+        daq_prompt = welcome[1]
+        print(daq_prompt)
+    else:
+        print("Issues getting login message.")
+
+    # Identify the DAQ
+    daq_identity = get_idn(daq_conn)
+    if daq_identity:
+        print("DAQ Manufacturer:  %s"% daq_identity[0])
+        print("DAQ Model:         %s"% daq_identity[1])
+        print("DAQ Serial Number: %s"% daq_identity[2])
+        print("DAQ Firmware:      %s"% daq_identity[3])
+    else:
+        print("Cannot get DAQ identity")
+
+    return daq_prompt, daq_identity
+
+
+def configure_daq_channels(daq_conn, chan_list):
+    """Takes processed channel list and configures the channels on the DAQ
+    """
+    #[1005, "my volts", "VOLT", "DC", "AUTO", "DEF"]
+    chan_numbers = "@"
+    for i in range(len(chan_list)):
+        print(chan_list[i][2].upper())
+        chan_type = chan_list[i][2].upper()
+        if chan_type == "TEMP":
+            print("Configuring channel: %s"% (chan_list[i][0]))
+            configure_thermocouple_chan(daq_conn, chan_list[i][0])
+            chan_numbers = chan_numbers + str(chan_list[i][0])
+            if not i >= len(chan_list)-1:
+                chan_numbers = chan_numbers + ","
+
+        elif chan_type == "VOLT":
+            print("Configuring channel: %s"% (chan_list[i][0]))
+            configure_dc_voltage(daq_conn, chan_list[i][0])
+            chan_numbers = chan_numbers + str(chan_list[i][0])
+            if not i >= len(chan_list)-1:
+                chan_numbers = chan_numbers + ","
+
+        elif chan_type == "SHUNT":
+            print("Configuring channel: %s"% (chan_list[i][0]))
+            configure_shunt(daq_conn, chan_list[i][0])
+            chan_numbers = chan_numbers + str(chan_list[i][0])
+            if not i >= len(chan_list)-1:
+                chan_numbers = chan_numbers + ","
+
+        elif chan_type == "FREQ":
+            print("Configuring channel: %s"% (chan_list[i][0]))
+            configure_frequency(daq_conn, chan_list[i][0])
+            chan_numbers = chan_numbers + str(chan_list[i][0])
+            if not i >= len(chan_list)-1:
+                chan_numbers = chan_numbers + ","
+
+    return chan_numbers
 
 
 def main():
@@ -220,51 +376,33 @@ def main():
         print("Can't reach IP address: %s %s"%(daq_ip_address, daq_port_address))
         exit()
 
-    # Check if we get a welcome connection and get the DAQ prompt
-    welcome = welcome_daq(tel_conn)
-    if welcome:
-        daq_prompt = welcome[1]
-        print(daq_prompt)
-    else:
-        print("Issues getting login message.")
-
-    # Identify the DAQ
-    daq_identity = get_idn(tel_conn)
-    if daq_identity:
-        print("DAQ Manufacturer:  %s"% daq_identity[0])
-        print("DAQ Model:         %s"% daq_identity[1])
-        print("DAQ Serial Number: %s"% daq_identity[2])
-        print("DAQ Firmware:      %s"% daq_identity[3])
-    else:
-        print("Cannot get DAQ identity")
+    daq_prompt, daq_identity = welcome_get_idn(tel_conn)
 
     # Reset the DAQ before configuring
-    if reset_daq_factory_cfg(tel_conn, daq_prompt):
-        print("Reset DAQ")
-    else:
-        print("Problem resetting DAQ")
+    reset_daq_factory_cfg(tel_conn, daq_prompt)
 
     # Configuring DAQ channels
-    #[1005, "my volts", "VOLT", "DC", "AUTO", "DEF"]
-    chan_numbers = "@"
-    for i in range(len(chan_list)):
-        print(chan_list[i][2].upper())
-        chan_type = chan_list[i][2].upper()
-        if chan_type == "TEMP":
-            print("Configuring channel: %s"% (chan_list[i][0]))
-            configure_thermocouple_chan(tel_conn, chan_list[i][0])
-            chan_numbers = chan_numbers + str(chan_list[i][0])
-            if not i >= len(chan_list)-1:
-                chan_numbers = chan_numbers + ","
+    chan_numbers = configure_daq_channels(tel_conn, chan_list)
+
+    # Configure the daq to scan the channels (sensors)
     configure_daq(tel_conn, chan_numbers)
 
-    raw_sensor_line = collect_sensor_line(tel_conn, daq_prompt)
+    # Now collect and display sensor data
+    for i in range(0,3):
+        # Read from DAQ one set of sensor data and return it as a raw string
+        raw_sensor_line = collect_sensor_line(tel_conn, daq_prompt)
+        # Convert raw sensor line string and print the results
+        #TODO return this as a list that can be manipulated
+        sensor_line = return_sensor_value(raw_sensor_line, chan_list)
+        print(sensor_line)
+        time.sleep(3)
 
-    return_sensor_value(raw_sensor_line)
 
+    # Reset the DAQ before closing to release it back to locol control
+    # reset_daq_factory_cfg(tel_conn, daq_prompt)
+    # Put DAQ into local mode and exit
+    put_in_local_mode(tel_conn, daq_prompt)
     tel_conn.write(b"\x04")
-    # tn.close()
-    # print(tel_conn.read_all().decode('ascii'))
 
 
 if __name__ == "__main__":

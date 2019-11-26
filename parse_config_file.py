@@ -61,6 +61,24 @@ class Sensor:
                self.sen_attr04, self.sen_attr05)
               )
 
+    def found_ip(self):
+        """Search for and return ip or host address from configuration file
+        """
+        if "DAQ_IP" in self.channel:
+            return self.name
+        else:
+            return False
+
+    def found_port(self):
+        """Search for and return port address from configuration file
+        """
+        if "DAQ_IP" in self.channel:
+            return self.sen_type
+        else:
+            return False
+
+
+
 
 def list_errors(error_list):
     """
@@ -76,24 +94,52 @@ def list_errors(error_list):
         print("Configuration line: %s - \"%s\""%(line, error))
 
 
-def add_sensor_line(cfg_line, sensor_list):
-    """Add a sensor config line to the sensor list
+def add_ip_line(cfg_line):
+    """Add the DAQ IP address to the DAQ sensor list
 
     Args:
         cfg_line:
         sensor_list:
     """
-    sensor_line = []
-    for line_entry in (cfg_line.split(',')):
-        sensor_line.append(line_entry.strip())
-
-    pad = 9 - len(sensor_line)
+    ip_line = []
+    ip = cfg_line.split(':')
+    # "IP", "192.0.0.3", ADDR,
+    line = cfg_line
+    ip_line.append("DAQ_IP")
+    ip_line.append(ip[1].strip())
+    ip_line.append("5024")
+    pad = 9 - len(ip_line)
     for i in range(1, pad):
-        sensor_line.append("na")
+        ip_line.append("na")
+    return ip_line
 
-    sensor_list.append(Sensor(sensor_line[0], sensor_line[1], sensor_line[2], sensor_line[3],
-                              sensor_line[4], sensor_line[5], sensor_line[6], sensor_line[7],
-                              ))
+
+def add_sensor_line(cfg_line, sensor_list, sensor_type):
+    """Add a sensor config line to the sensor list
+
+    Args:
+        cfg_line:
+        sensor_list:
+        sensor_type:
+    """
+    if 'ip_address' in sensor_type:
+        ip_line = add_ip_line(cfg_line)
+
+        sensor_list.append(Sensor(ip_line[0], ip_line[1], ip_line[2], ip_line[3],
+                                  ip_line[4], ip_line[5], ip_line[6], ip_line[7],
+                                  ))
+    else:
+        sensor_line = []
+        for line_entry in (cfg_line.split(',')):
+            sensor_line.append(line_entry.strip())
+
+        pad = 9 - len(sensor_line)
+        for i in range(1, pad):
+            sensor_line.append("na")
+
+        sensor_list.append(Sensor(sensor_line[0], sensor_line[1], sensor_line[2], sensor_line[3],
+                                  sensor_line[4], sensor_line[5], sensor_line[6], sensor_line[7],
+                          ))
     return sensor_list
 
 
@@ -120,9 +166,10 @@ def parse_config_file(config_file):
         if not_config_information(config_line):
             continue
 
+        # Found a config line add it to the list
         elif sensor_line:
-            sensor_line_type = sensor_line[0]
-            sensor_line = add_sensor_line(config_line, sensor_list)
+            sensor_type = sensor_line[0]
+            sensor_list = add_sensor_line(config_line, sensor_list, sensor_type)
 
         else:
             line_error = line_count, config_line
@@ -163,6 +210,8 @@ def search_for_sensor(cfg_line):
     """
     search_results = False
     sensor_search_keys = (
+        ("ip_address",
+            r"Address:\s(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)"),
         ("thermocouple", r"\d{3,4},\s[0-9a-zA-Z\s\-\+_#]{3,40},\sTemp,\sTC,\s[J|K|T],\s\d,\s[C|F],\sDEF"),
         ("frequency",    r"\d{3,4},\s*[0-9a-zA-Z\s\-\+_]{3,40},\s*FREQ,\s*DEF,\s*DEF"),
         ("dc_voltage",   r"\d{3,4},\s*[0-9a-zA-Z\s\-\+_]{3,40},\s*VOLT,\s*DC,\s*AUTO,\s*DEF"),
@@ -178,25 +227,10 @@ def search_for_sensor(cfg_line):
     return search_results
 
 
-def open_file(file):
-    """Opens a config file to be read in. Returns a file handle or False
-    Args:
-        file:
-    """
-    o_file = False
-    try:
-        o_file = open(file, 'r')
-
-    except FileNotFoundError:
-        print("Sorry I could not find the config file: \"%s\"" % file)
-    return o_file
-
-
 def main():
     config_path = "config/"
     # Prompt for config file:
     opened_config_file = hcf.get_config_file(config_path)
-
 
     sensor_list, error_list = parse_config_file(opened_config_file)
 
