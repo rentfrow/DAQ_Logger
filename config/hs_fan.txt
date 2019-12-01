@@ -1,0 +1,16 @@
+# channel number, description, Sensor Type, temp type, thermocouple type, Range, Degrees Type, Resolution
+# IP address of the data acquisition unit and port address. The standard port address is 5024
+Address: 172.28.94.64 5024
+
+# Volt_DC, Frequency, Current_DC
+# Thermocouples supported: B, E, J, K, N, R, S, T
+
+#Num, Name,             Function,  Type, Range, Resolution, Scale, Gain(M), Offset(B), Units
+101,  "Front Ambient",  TCouple,   T,    1,     4.5,        FALSE, 1,       0,         C
+102,  "Fan Voltage",    Volt,      DC,   DEF,   DEF,        TRUE,  1,       0,         Vdc
+103,  "Shunt Current",  Volt,      DC,   DEF,   DEF,        TRUE,  500,     0,         Amp
+104,  "Fan RPM",        Freq,      ,     10,    4.5,        TRUE,  15,      0,         RPM
+106,  "REAR Amb",       TCouple,   T,    1,     4.5,        FALSE, 1,       0,         C
+
+flcccccckdctbnunghhhujvnhlncnbkedvjbcrrgbdeifh
+
