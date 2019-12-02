@@ -271,7 +271,7 @@ def collect_sensor_line(tel_conn, daq_prompt):
     tel_conn.write(b":READ?\n")
     response = tel_conn.read_until(b"\n", 5)
     # Time between log events
-    time.sleep(1)
+    time.sleep(0.1)
     # Put the read_until into a list
     response = response.strip()
     response = response.decode('ascii')

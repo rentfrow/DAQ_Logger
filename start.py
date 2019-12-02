@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+# TODO Create function to sync time (ntplib)
+# TODO Output to a file
+# TODO Make sure program can be run via command line arguments
+
 import sys
 import time
 import handle_config_file
@@ -88,7 +92,9 @@ def main():
         try:
             # Read from DAQ one set of sensor data and return it as a raw string
             sensor_line = DAQ_cmd.collect_sensor_line(tel_conn, daq_prompt)
+            print(len(sensor_line))
             print(sensor_line)
+
             # Convert raw sensor line string and print the results
             #TODO return this as a list that can be manipulated
             try:

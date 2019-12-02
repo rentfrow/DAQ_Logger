@@ -257,9 +257,10 @@ def search_for_sensor(cfg_line):
 
     return search_results
 
+
+
 def sensors_to_list(sensor_list):
     """
-
     :param sensor_list:
     :return:
     """
