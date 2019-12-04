@@ -258,7 +258,6 @@ def search_for_sensor(cfg_line):
     return search_results
 
 
-
 def sensors_to_list(sensor_list):
     """
     :param sensor_list:
@@ -268,6 +267,17 @@ def sensors_to_list(sensor_list):
     for items in range(0, (len(sensor_list))):
         a_list.append(sensor_list[items].return_sensor_list())
     return a_list
+
+
+def e_notation_to_dec(e_nota):
+    """Agilent format of Engineering Notation (m * 10^n) to a decimal number
+    +1.90380000E+01
+    -1.00346000E+02
+    """
+    m = float(e_nota[0:11])
+    e = float(e_nota[12:15])
+    return round(m*10**e, 6)
+    #return e_nota
 
 
 def main():

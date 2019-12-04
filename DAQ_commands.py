@@ -254,15 +254,7 @@ def configure_daq(daq_conn, chan_list):
     daq_conn.write(b"\n\n")
 
 
-def e_notation_to_dec(e_nota):
-    """Agilent format of Engineering Notation (m * 10^n) to a decimal number
-    +1.90380000E+01
-    -1.00346000E+02
-    """
-    m = float(e_nota[0:11])
-    e = float(e_nota[12:15])
-    return round(m*10**e, 6)
-    #return e_nota
+
 
 
 def collect_sensor_line(tel_conn, daq_prompt):
