@@ -1,0 +1,18 @@
+# channel number, description, Sensor Type, temp type, thermocouple type, Range, Degrees Type, Resolution
+# IP address of the data acquisition unit and port address. The standard port address is 5024
+# DAQ 34980A
+
+Address: 10.193.64.232 5024
+
+# Volt_DC, Frequency, Current_DC
+# Thermocouples supported: B, E, J, K, N, R, S, T
+
+#Num, Name,             Function,  Type, Range, Resolution, Scale, Gain(M), Offset(B), Units
+1001,  "TC Front Ambient",  TCouple,   T,    1,     4.5,        FALSE, 1,       0,         C
+1002,  "TC Front CPU",      TCouple,   T,    1,     4.5,        FALSE, 1,       0,         C
+1003,  "TC Rear CPU",       TCouple,   T,    1,     4.5,        FALSE, 1,       0,         C
+
+
+
+
+
