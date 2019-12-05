@@ -31,19 +31,30 @@ def get_test_log_name(test_log_file_name, test_log_path):
     """
     if test_log_file_name:
         test_log_file_name = Path(test_log_path + "/" + test_log_file_name)
-
-
+        if test_log_file_name.is_file():
+            print("Please use another file name file exists")
+            test_log_file_name = False
+        else:
+            print("Will attempt to log to %s" % test_log_file_name)
 
     while not test_log_file_name:
-        proposed_test_log_file = input("\nEnter test log file name or 'screen' to output only to screen: ")
+        proposed_test_log_file = input("\nEnter test log file name or 's' to output only to screen or 'x' to exit: ")
+        if "X" == proposed_test_log_file.upper():
+            sys.exit()
+        ############### TODO: This does not work "screen" option!
+        if "s" == proposed_test_log_file.upper():
+            return "screen"
         test_log_file_name = Path(test_log_path + "/" + proposed_test_log_file)
         if not test_log_file_name.is_file():
-            print("It's good. File does not exist")
+            print("Will attempt to log to %s" % test_log_file_name)
 
         else:
             print("Please use another file name file exists")
             test_log_file_name = False
+
     return test_log_file_name
+
+
 
 
 
@@ -61,7 +72,7 @@ def main():
         # TODO: Instead of returning a file handle this should return a
         #  file name and then a separate function to return a file handle
         config_file = handle_config_file.get_config_file(config_path)
-
+    test_log_file_name = "log.txt"
     print(test_log_file_name)
     test_log_file_name = get_test_log_name(test_log_file_name, test_log_path)
     print(test_log_file_name)
