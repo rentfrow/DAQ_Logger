@@ -126,6 +126,9 @@ def main():
     else:
         print("Cannot get DAQ identity")
 
+    # Sync DAQ with local machine time
+    DAQ_cmd.sync_daq_time_local_clock(tel_conn)
+
 
     # Reset the DAQ before configuring
     if DAQ_cmd.reset_daq_factory_cfg(tel_conn, daq_prompt):

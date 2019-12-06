@@ -16,6 +16,30 @@ import telnetlib
 import re
 import time
 
+def sync_daq_time_local_clock(daq_conn):
+    """Set the DAQ time
+    TIME
+    :SYSTem:TIME 13,59,45
+    DATE
+    :SYSTem:DATE 2019,12,5
+
+    """
+    localtime = time.localtime(time.time())
+    year =  str(localtime[0])
+    month = str(localtime[1])
+    day =   str(localtime[2])
+    execute_daq_cmd(daq_conn, ":SYSTem:DATE " + year + ", " + month + ", " + day, 1)
+    collect_errors(daq_conn)
+    localtime = time.localtime(time.time())
+    hour =    str(localtime[3])
+    minute =  str(localtime[4])
+    seconds = str(localtime[5])
+    execute_daq_cmd(daq_conn, ":SYSTem:TIME " + hour + ", " + minute + ", " + seconds, 1)
+    collect_errors(daq_conn)
+    print("Synced to local machine time: %s/%s/%s %s:%s:%s" % (month, day, year, hour, minute, seconds))
+    return True
+
+
 
 def connect_daq(ip, port, timeout_num):
     """Connect to DAQ and return the connection and telnet terminal prompt

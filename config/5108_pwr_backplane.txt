@@ -1,0 +1,23 @@
+# channel number, description, Sensor Type, temp type, thermocouple type, Range, Degrees Type, Resolution
+# IP address of the data acquisition unit
+Address: 10.2.128.4
+
+# Thermocouples supported: B, E, J, K, N, R, S, T
+# Volt_DC, Frequency, Current_DC
+
+#Num, Name,  Function,  Type, Range, Resolution, Scale,    Gain(M), Offset(B), Units
+101,  "J10", "TCouple", "T",  "1",   "4.5",      "FALSE",  "1",     "0",       "C"
+102,  "J13", "TCouple", "T",  "1",   "4.5",      "FALSE",  "1",     "0",       "C"
+103,  "J12", "TCouple", "T",  "1",   "4.5",      "FALSE",  "1",     "0",       "C"
+104,  "J4",  "TCouple", "T",  "1",   "4.5",      "FALSE",  "1",     "0",       "C"
+105,  "J11", "TCouple", "T",  "1",   "4.5",      "FALSE",  "1",     "0",       "C"
+106,  "J2",  "TCouple", "T",  "1",   "4.5",      "FALSE",  "1",     "0",       "C"
+107,  "J5",  "TCouple", "T",  "1",   "4.5",      "FALSE",  "1",     "0",       "C"
+108,  "J15", "TCouple", "T",  "1",   "4.5",      "FALSE",  "1",     "0",       "C"
+109,  "J7",  "TCouple", "T",  "1",   "4.5",      "FALSE",  "1",     "0",       "C"
+110,  "J8",  "TCouple", "T",  "1",   "4.5",      "FALSE",  "1",     "0",       "C"
+201,  "J1",  "TCouple", "T",  "1",   "4.5",      "FALSE",  "1",     "0",       "C"
+202,  "J6",  "TCouple", "T",  "1",   "4.5",      "FALSE",  "1",     "0",       "C"
+203,  "Amb", "TCouple", "T",  "1",   "4.5",      "FALSE",  "1",     "0",       "C"
+
+
