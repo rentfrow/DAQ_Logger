@@ -42,8 +42,10 @@ def get_test_log_name(test_log_file_name, test_log_path):
         if "X" == proposed_test_log_file.upper():
             sys.exit()
         ############### TODO: This does not work "screen" option!
-        if "s" == proposed_test_log_file.upper():
-            return "screen"
+        if "S" == proposed_test_log_file.upper():
+            print("Printing to screen only")
+            return "screen_only", False
+
         test_log_file_name = Path(test_log_path + "/" + proposed_test_log_file)
         if not test_log_file_name.is_file():
             print("Will attempt to log to %s" % test_log_file_name)
@@ -52,7 +54,7 @@ def get_test_log_name(test_log_file_name, test_log_path):
             print("Please use another file name file exists")
             test_log_file_name = False
 
-    return test_log_file_name
+    return test_log_file_name, True
 
 
 
@@ -65,6 +67,7 @@ def main():
     global config_path
     global test_log_path
 
+    # TODO: Add the ability to pass command line arguments for start file
     if config_file_name:
         # TODO: Create a function here to open the config_file_name
         pass
@@ -72,10 +75,24 @@ def main():
         # TODO: Instead of returning a file handle this should return a
         #  file name and then a separate function to return a file handle
         config_file = handle_config_file.get_config_file(config_path)
-    test_log_file_name = "log.txt"
-    print(test_log_file_name)
-    test_log_file_name = get_test_log_name(test_log_file_name, test_log_path)
-    print(test_log_file_name)
+
+
+
+    # test_log_file_name = "log.txt"  # simulating passing a argv
+    log_file_name, log_to_file = get_test_log_name(test_log_file_name, test_log_path)
+    print(log_file_name, log_to_file)
+
+    # Set the interval between DAQ sensor collections
+    # TODO: Should the integer value be limited? 1 to 3600 seconds?
+    collection_interval = False
+    while not collection_interval:
+        collection_interval = input("Enter integer in seconds between sensor collections: ")
+        try:
+            collection_interval = abs(int(collection_interval))  # change string to a integer and the the ABS()
+        except ValueError:
+            print("You entered '%s'. The value must be an integer." % str(collection_interval))
+            collection_interval = False
+
 
 
     # Slurp file contents into a list of strings so we can close the file
@@ -119,6 +136,7 @@ def main():
     # Identify the DAQ
     daq_identity = DAQ_cmd.get_idn(tel_conn)
     if daq_identity:
+        print(daq_identity)
         print("DAQ Manufacturer:  %s"% daq_identity[0])
         print("DAQ Model:         %s"% daq_identity[1])
         print("DAQ Serial Number: %s"% daq_identity[2])
@@ -148,9 +166,12 @@ def main():
     # Configure the daq to scan the channels (sensors)
     DAQ_cmd.configure_daq(tel_conn, chan_numbers)
 
+    # open/create the log file
+    if log_to_file:
+        log_file = open(log_file_name, 'w')
+    else:
+        log_file = "screen_only"
 
-
-    collection_interval = 10
     # Now collect and display sensor data
     while True:
         try:
@@ -161,11 +182,18 @@ def main():
             datestamp = sensor_line[2] + "/" + sensor_line[3] + "/" + sensor_line[1] + " " + sensor_line[4] + ":" + \
                         sensor_line[5] + ":" + sensor_line[6][0:2]
 
+            # TODO write to screen and log_file if it has been opened. This needs to be worked on more!!!
             print("%s, " % datestamp, end="")
             for i in range(0, len(sensor_line), 8):
                 print("%s, " % pcf.e_notation_to_dec(sensor_line[i]), end="")
             print("")
-
+            # Write to log file if enabled
+            # TODO: Need to add header and clean up this mess
+            if log_to_file:
+                log_file.write("%s, " % datestamp)
+                for i in range(0, len(sensor_line), 8):
+                    log_file.write("%s, " % pcf.e_notation_to_dec(sensor_line[i]))
+                log_file.write("\n")
 
 
 
@@ -173,19 +201,27 @@ def main():
                 time.sleep(collection_interval)
             except (KeyboardInterrupt, SystemExit):
                 # TODO: Clean up things here before exiting
+                if log_to_file:
+                    log_file.close()
+                DAQ_cmd.put_in_local_mode(tel_conn, daq_prompt)
+                tel_conn.write(b"\x04")
                 sys.exit()
 
         except (KeyboardInterrupt, SystemExit):
             # TODO: Clean up things here before exiting
+            if log_to_file:
+                log_file.close()
+            DAQ_cmd.put_in_local_mode(tel_conn, daq_prompt)
+            tel_conn.write(b"\x04")
             sys.exit()
 
 
 
 
+    #    print("TODO: Put a choice here to choose between reset or just disconnect remote.")
     DAQ_cmd.put_in_local_mode(tel_conn, daq_prompt)
     # Reset the DAQ to factory defaults before closing connection
     #if DAQ_cmd.reset_daq_factory_cfg(tel_conn, daq_prompt):
-    #    print("TODO: Put a choice here to choose between reset or just disconnect remote.")
         #put_in_local_mode(tel_conn, daq_prompt)
     #    print("DAQ Reset")
     #else:

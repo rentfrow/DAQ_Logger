@@ -40,7 +40,6 @@ def sync_daq_time_local_clock(daq_conn):
     return True
 
 
-
 def connect_daq(ip, port, timeout_num):
     """Connect to DAQ and return the connection and telnet terminal prompt
     """
@@ -100,17 +99,22 @@ def get_idn(daq_conn):
     Agilent Technologies,34980A,MY53151561,2.51-2.43-2.07-1.05
     [\w\s]*,[\w\s]*,[\w\s]*,[\w\s.-]*
     """
-    idn_regex=[re.compile(b"[\w\s]*,[\w]*,[\w]*,[\d.-]*\r\n")]
+    #idn_regex = re.compile(b"[\w\s]*,[\w]*,[\w]*,[\d.-]*\r\n")
+    # idn_regex = re.compile(b"[\w\s]*,[\w]*,[\w]*,[\d.-]*\r\n")
+    idn_regex = [b"\w\s]+,\w+,\w+,[\d.\-]+"]
+
     daq_conn.write(b"*IDN?\n")
-    time.sleep(0.1)
+    time.sleep(0.2)
     m_index, obj_returned, bytes_matched = daq_conn.expect(idn_regex, 10)
+    # m_index, obj_returned, bytes_matched = daq_conn.expect(b"[\w\s]*,[\w]*,[\w]*,[\d.-]*\r\n", 10)
+
     line = bytes_matched.decode('ascii').split(",")
     manufacturer_line = line[0].split("> ")
     manufacturer = manufacturer_line[1]
     daq_model = line[1]
     daq_serial_number = line[2]
     daq_firmware_version = line[3].strip()
-    return (manufacturer, daq_model, daq_serial_number, daq_firmware_version)
+    return manufacturer, daq_model, daq_serial_number, daq_firmware_version
 
 
 def configure_voltage(daq_conn, sensor_line):
@@ -128,7 +132,7 @@ def configure_voltage(daq_conn, sensor_line):
 
     execute_daq_cmd(daq_conn,
                     ":CONFigure:VOLTage:" + v_type + " " + s_range + "," + s_res + ",(" + chan_num + ")", sleep_time)
-    #print(":CONFigure:VOLTage:" + v_type + " " + s_range + "," + s_res + ",(" + chan_num + ")")
+    # print(":CONFigure:VOLTage:" + v_type + " " + s_range + "," + s_res + ",(" + chan_num + ")")
     collect_errors(daq_conn)
     execute_daq_cmd(daq_conn, ":SENSe:VOLTage:DC:NPLCycles 10,(" + chan_num + ")", sleep_time)
     collect_errors(daq_conn)
@@ -420,7 +424,7 @@ def main():
     # Connect to DAQ
     tel_conn = connect_daq(daq_ip_address, daq_port_address, 10)
     if not tel_conn:
-        print("Can't reach IP address: %s %s"%(daq_ip_address, daq_port_address))
+        print("Can't reach IP address: %s %s" % (daq_ip_address, daq_port_address))
         exit()
 
     daq_prompt, daq_identity = welcome_get_idn(tel_conn)
@@ -437,7 +441,7 @@ def main():
     configure_daq(tel_conn, chan_numbers)
 
     # Now collect and display sensor data
-    for i in range(0,3):
+    for i in range(0, 3):
         # Read from DAQ one set of sensor data and return it as a raw string
         raw_sensor_line = collect_sensor_line(tel_conn, daq_prompt)
         #print(raw_sensor_line)
